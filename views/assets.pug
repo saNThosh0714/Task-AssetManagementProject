@@ -1,0 +1,450 @@
+doctype html
+html
+  head
+    title Asset List
+    link(rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css')
+    link(rel='stylesheet' href='https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css')
+    script(src='https://code.jquery.com/jquery-3.7.1.min.js')
+    script(src='https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js')
+    script(src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js')
+    script.
+      $(document).ready(function () {
+        const table = $('#assetsTable').DataTable({
+          scrollX: true,
+          paging: true,
+          searching: true
+        });
+
+        $('#statusFilter').on('change', function () {
+          const value = $(this).val();
+          if (value == 'Inactive') {
+            table.column(8).search('Scrap Reason', true, false).draw(); // Exact match in "Status" column (index 2)
+          } else if (value == 'Active') {
+            table.column(8).search('^' + 'Scrap Asset' + '$', true, false).draw(); // Exact match in "Status" column (index 2)
+          } else {
+            table.column(8).search('').draw();
+          }
+        });
+
+        $('#branchFilter').on('change', function () {
+          const value = $(this).val();
+          if (value) {
+            table.column(7).search('^' + value + '$', true, false).draw(); // Exact match in "Status" column (index 2)
+          } else {
+            table.column(7).search('').draw();
+          }
+        });
+
+        $('.edit-btn').click(function () {
+          const AssetSerial = $(this).data('assetserial');
+          const AssetName = $(this).data('assetname');
+          const AssetCategoryId = $(this).data('assetcategoryid');
+          const Make = $(this).data('make');
+          const Model = $(this).data('model');
+          const PurchaseAmount = $(this).data('purchaseamount');
+          const PurchaseDate = $(this).data('purchasedate');
+          const BranchId = $(this).data('branchid');
+
+          $('#editAssetSerial').val(AssetSerial);
+          $('#editAssetName').val(AssetName);
+          $('#editAssetCategoryId').val(AssetCategoryId);
+          $('#editMake').val(Make);
+          $('#editModel').val(Model);
+          $('#editBranch').val(BranchId);
+          $('#editPurchaseAmount').val(PurchaseAmount);
+          $('#editPurchaseDate').val(PurchaseDate);
+          const modal = new bootstrap.Modal(document.getElementById('editModal'));
+          modal.show();
+        });
+
+        $('.view-btn').click(function () {
+          const AssetSerial = $(this).data('assetserial');
+          const AssetName = $(this).data('assetname');
+          const AssetCategoryId = $(this).data('assetcategoryid');
+          const Make = $(this).data('make');
+          const Model = $(this).data('model');
+          const PurchaseAmount = $(this).data('purchaseamount');
+          const PurchaseDate = $(this).data('purchasedate');
+          const BranchId = $(this).data('branchid');
+
+          $('#ViewAssetSerial').val(AssetSerial);
+          $('#ViewAssetName').val(AssetName);
+          $('#ViewAssetCategoryId').val(AssetCategoryId);
+          $('#ViewMake').val(Make);
+          $('#ViewModel').val(Model);
+          $('#ViewBranch').val(BranchId);
+          $('#ViewPurchaseAmount').val(PurchaseAmount);
+          $('#ViewPurchaseDate').val(PurchaseDate);
+
+          const modalEl = document.getElementById('ViewModal');
+          const modal = new bootstrap.Modal(modalEl);
+
+          modalEl.addEventListener('shown.bs.modal', function () {
+            $('#ViewAssetTable').DataTable().columns.adjust().draw();
+          });
+
+          modal.show();
+          
+          //- const modal = new bootstrap.Modal(document.getElementById('ViewModal'));
+          //- modal.show();
+
+          EmpAssetCall(AssetSerial);
+        });
+
+        $('.issue-btn').click(function () {
+          const AssetSerial = $(this).data('assetserial');
+
+          $('#editAssignAssetSerial').val(AssetSerial);
+          const modal = new bootstrap.Modal(document.getElementById('assignModal'));
+          modal.show();
+        });
+
+      });
+
+  body(class='bg-light')
+    .container.mt-5
+      .card.shadow
+        .card-header.bg-primary.text-white.d-flex.justify-content-between.align-items-center
+          h2.mb-0 Asset List
+          .div
+            a.btn.btn-light.btn-sm.mx-2(href='/main/employees') View Employees
+            button.btn.btn-light.btn-sm.mx-2(data-bs-toggle='modal' data-bs-target='#addModal') + Add Asset
+            button.btn.btn-light.btn-sm(data-bs-toggle='modal' data-bs-target='#addcategoryModal') + Add Asset Category
+            button.btn.btn-light.btn-sm.mx-2(data-bs-toggle='modal' data-bs-target='#addbranchModal') + Add Branch
+
+        .card-body
+          .row
+            .col-3
+              label.form-label(for='statusFilter') Filter by Status:
+                select#statusFilter.form-select(style='width: 200px; display: inline-block; margin-left: 10px;')
+                  option(value='') All
+                  option(value='Active') Active
+                  option(value='Inactive') Scrap
+            .col-3
+              label.form-label(for='branchFilter') Filter by Branch:
+                select#branchFilter.form-select(style='width: 200px; display: inline-block; margin-left: 10px;')
+                  option(value='') All
+                  each data in Branch
+                    option(value=data.Branchname)= data.Branchname
+            .col-6
+
+        table#assetsTable.table.table-bordered.table-striped(width='100%')
+          thead
+            tr
+              th AssetSerial
+              th AssetName
+              th AssetType
+              th Make
+              th Model
+              th PurchaseAmount
+              th PurchaseDate
+              th Branch
+              th Status
+              th Issued Status
+              th Actions
+          tbody
+            each asset in assets
+              tr
+                td= asset.AssetSerial
+                td= asset.AssetName
+                td= asset['AssetCategoryDetails.Category']
+                td= asset.Make
+                td= asset.Model
+                td= asset.PurchaseAmount
+                td= asset.PurchaseDate
+                td= asset['BranchDetails.Branchname']
+                td
+                  if asset.isScrap
+                    = 'Scrap Reason: '+asset.ScrapReason
+                  else
+                    button.btn(
+                      class=asset.isScrap ? 'btn-danger' : 'btn-success',
+                      type='button',
+                      data-AssetSerial=asset.AssetSerial,
+                      data-isScrap=asset.isScrap,
+                      onclick='toggleStatus(event)'
+                      disabled=((asset.EmpID && asset.EmpID != '') || asset.isScrap)
+                    )= 'Scrap Asset'
+                td 
+                  if asset.EmpID && asset.EmpID != ''
+                    = 'Issued To: '+asset['EmployeeDetails.EmpName']
+                  else if asset.isScrap
+                  else
+                    button.btn.btn-warning.btn-sm.issue-btn(type='button',data-AssetSerial=asset.AssetSerial) Issue
+                td
+                  .d-flex
+                    button.btn.btn-sm.view-btn(
+                      class='btn-success mx-2',
+                      type='button',
+                      data-AssetSerial=asset.AssetSerial,
+                      data-AssetName=asset.AssetName,
+                      data-AssetCategoryId=asset.AssetCategoryId,
+                      data-Make=asset.Make,
+                      data-Model=asset.Model,
+                      data-PurchaseAmount=asset.PurchaseAmount,
+                      data-PurchaseDate=asset.PurchaseDate,
+                      data-BranchId=asset.BranchId,
+                    ) View Asset History
+                    button.btn.btn-warning.btn-sm.edit-btn(
+                      type='button',
+                      data-AssetSerial=asset.AssetSerial,
+                      data-AssetName=asset.AssetName,
+                      data-AssetCategoryId=asset.AssetCategoryId,
+                      data-Make=asset.Make,
+                      data-Model=asset.Model,
+                      data-PurchaseAmount=asset.PurchaseAmount,
+                      data-PurchaseDate=asset.PurchaseDate,
+                      data-BranchId=asset.BranchId,
+                    ) Edit
+
+        .card-footer.text-end
+          a.btn.btn-secondary(href='/') Back to Home
+
+    // Add Asset Modal
+    .modal.fade#addModal(tabindex='-1')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h5.modal-title Add Asset
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='/main/assets/add' method='post')
+            .modal-body
+              .mb-3.row
+                .col-6
+                  label.form-label(for='AssetName') Asset Name
+                  input.form-control(type='text' name='AssetName', required)
+                .col-6
+                  label.form-label(for='AssetCategoryId') Asset Type
+                  select.form-select(name='AssetCategoryId', required)
+                    option(disabled selected value='') -- Select Asset Type --
+                    each category in AssetCategory
+                      option(value=category.DocEntry)= category.Category
+              .mb-3.row
+                .col-4
+                  label.form-label(for='Make') Make
+                  input.form-control(type='text' name='Make', required)
+                .col-4
+                  label.form-label(for='Model') Model
+                  input.form-control(type='text' name='Model', required)
+                .col-4
+                  label.form-label(for='BranchId') Branch
+                  select.form-select(name='BranchId', required)
+                    option(disabled selected value='') -- Select Branch --
+                    each data in Branch
+                      option(value=data.DocEntry)= data.Branchname
+              .mb-3.row
+                .col-6
+                  label.form-label(for='PurchaseAmount') Purchase Amount
+                  input.form-control(type='number' name='PurchaseAmount', required)
+                .col-6
+                  label.form-label(for='PurchaseDate') Purchase Date
+                  input.form-control(type='date' name='PurchaseDate', required)
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+              button.btn.btn-primary(type='submit') Add
+
+    // Add Asset Category Modal
+    .modal.fade#addcategoryModal(tabindex='-1')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h5.modal-title Add Category
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='/main/assetcategory/add' method='post')
+            .modal-body
+              .mb-3.row
+                label.form-label(for='Category') Asset Category
+                input.form-control(type='text' name='Category', required)
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+              button.btn.btn-primary(type='submit') Add
+
+      // Add Asset Branch Modal
+    .modal.fade#addbranchModal(tabindex='-1')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h5.modal-title Add Branch
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='/main/branch/add' method='post')
+            .modal-body
+              .mb-3.row
+                label.form-label(for='Branchname') Branch
+                input.form-control(type='text' name='Branchname', required)
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+              button.btn.btn-primary(type='submit') Add 
+
+    // Edit Asset Modal
+    .modal.fade#editModal(tabindex='-1')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h5.modal-title Edit Asset
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='/main/assets/edit' method='post')
+            .modal-body
+              input(type='hidden' id='editAssetSerial' name="AssetSerial")
+              .mb-3.row
+                .col-6
+                  label.form-label(for='AssetName') Asset Name
+                  input.form-control(type='text' name='AssetName' id='editAssetName', required)
+                .col-6
+                  label.form-label(for='AssetCategoryId') Asset Type
+                  select.form-select(name='AssetCategoryId' id='editAssetCategoryId', required)
+                    option(disabled selected value='') -- Select Asset Type --
+                    each category in AssetCategory
+                      option(value=category.DocEntry)= category.Category
+              .mb-3.row
+                .col-4
+                  label.form-label(for='Make') Make
+                  input.form-control(type='text' name='Make' id='editMake', required)
+                .col-4
+                  label.form-label(for='Model') Model
+                  input.form-control(type='text' name='Model' id='editModel', required)
+                .col-4
+                  label.form-label(for='BranchId') Branch
+                  select.form-select(name='BranchId' id='editBranch', required)
+                    option(disabled selected value='') -- Select Branch --
+                    each data in Branch
+                      option(value=data.DocEntry)= data.Branchname
+              .mb-3.row
+                .col-6
+                  label.form-label(for='PurchaseAmount') Purchase Amount
+                  input.form-control(type='number' name='PurchaseAmount' id='editPurchaseAmount', required)
+                .col-6
+                  label.form-label(for='PurchaseDate') Purchase Date
+                  input.form-control(type='date' name='PurchaseDate' id='editPurchaseDate', required)
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+              button.btn.btn-primary(type='submit') Save
+
+    // View Asset Modal
+    .modal.fade#ViewModal(tabindex='-1')
+      .modal-dialog.modal-lg
+        .modal-content
+          .modal-header
+            h5.modal-title View Asset
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='' method='post')
+            .modal-body
+              input(type='hidden' id='ViewAssetSerial' name="AssetSerial")
+              .mb-3.row
+                .col-6
+                  label.form-label(for='AssetName') Asset Name
+                  input.form-control(type='text' name='AssetName' id='ViewAssetName', readonly)
+                .col-6
+                  label.form-label(for='AssetCategoryId') Asset Type
+                  select.form-select(name='AssetCategoryId' id='ViewAssetCategoryId', disabled)
+                    option(disabled selected value='') -- Select Asset Type --
+                    each category in AssetCategory
+                      option(value=category.DocEntry)= category.Category
+              .mb-3.row
+                .col-4
+                  label.form-label(for='Make') Make
+                  input.form-control(type='text' name='Make' id='ViewMake', readonly)
+                .col-4
+                  label.form-label(for='Model') Model
+                  input.form-control(type='text' name='Model' id='ViewModel', readonly)
+                .col-4
+                  label.form-label(for='BranchId') Branch
+                  select.form-select(name='BranchId' id='ViewBranch', disabled)
+                    option(disabled selected value='') -- Select Branch --
+                    each data in Branch
+                      option(value=data.DocEntry)= data.Branchname
+              .mb-3.row
+                .col-6
+                  label.form-label(for='PurchaseAmount') Purchase Amount
+                  input.form-control(type='number' name='PurchaseAmount' id='ViewPurchaseAmount', readonly)
+                .col-6
+                  label.form-label(for='PurchaseDate') Purchase Date
+                  input.form-control(type='date' name='PurchaseDate' id='ViewPurchaseDate', readonly)
+          .mb-3
+            h6.modal-tittle.mb-3 Asset History
+            div.table-responsive
+              table#ViewAssetTable.table.table-bordered.table-striped(width='100%')
+                thead
+                  tr
+                    th AssetSerial
+                    th AssetStatus
+                    th StatusDate
+                    th AssignEmployee
+                    th AssetRemark
+                tbody
+
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+
+    // Assign Employee
+    .modal.fade#assignModal(tabindex='-1')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h5.modal-title Assign Employee
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='/main/assignasset' method='post')
+            .modal-body
+              input(type='hidden' id='editAssignAssetSerial' name="AssetSerial")
+              .mb-3
+                label.form-label(for='EmpID') Employee
+                select.form-select(name='EmpID' id='editEmpID', required)
+                  option(disabled selected value='') -- Select Employee --
+                  each data in employees
+                    option(value=data.EmpID)= data.EmpName
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+              button.btn.btn-primary(type='submit') Save
+
+    // Scrap Modal
+    .modal.fade#scrapmodal(tabindex='-1')
+      .modal-dialog
+        .modal-content
+          .modal-header
+            h5.modal-title Reason
+            button.btn-close(type='button' data-bs-dismiss='modal')
+          form(action='/main/assets/toggle-status' method='post')
+            .modal-body
+              input(type='hidden' id='editScrapAssetSerial' name="AssetSerial")
+              input(type='hidden' id='editisScrap' name="isScrap")
+              .mb-3
+                label.form-label(for='ScrapReason') Reason
+                input.form-control(type='text' name='ScrapReason' id='ScrapReason', required)
+            .modal-footer
+              button.btn.btn-secondary(type='button' data-bs-dismiss='modal') Cancel
+              button.btn.btn-primary(type='submit') Save
+
+script.
+  function toggleStatus(event) {
+    const button = event.target;  // The clicked button
+    const AssetSerial = $(button).data('assetserial');
+    const isScrap = $(button).data('isscrap');
+
+      $('#editScrapAssetSerial').val(AssetSerial);
+      $('#editisScrap').val(isScrap);
+      const modal = new bootstrap.Modal(document.getElementById('scrapmodal'));
+      modal.show();
+  }
+
+  function EmpAssetCall(AssetSerial){
+    if ($.fn.DataTable.isDataTable('#ViewAssetTable')) {
+      $('#ViewAssetTable').DataTable().clear().destroy();
+    }
+
+    $('#ViewAssetTable').DataTable({
+      scrollX: true,
+      paging: true,
+      searching: true,
+      ajax: {
+        url: '/main/assetview',
+        data: { AssetSerial: AssetSerial }, 
+        dataSrc: ''
+      },
+      columns: [
+        { data: 'AssetSerial' },
+        { data: 'AssetStatus' },
+        { data: 'StatusDate' },
+        { data: ['HistEmployeeDetails.EmpName'] },
+        { data: 'AssetRemark' }
+      ]
+    });
+  }
